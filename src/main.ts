@@ -17,7 +17,7 @@ function oneOf(arr: string[]) {
     };
 }
 
-const skipValues = ["user", "user-verify", "group", "group-verify", "files", "files-verify", "type", "id", "name", "description"];
+const skipValues = ["user", "user-verify", "group", "group-verify", "files", "files-verify", "type", "id", "name", "description", "done"];
 const assetTypeValues = ["auto", "decal"]; // , "image", "shirt", "pants", "tshirt", "model", "animation", "place"];
 
 const assetTypeExtensions: any = { };
@@ -132,7 +132,8 @@ const cmdOptionsGuide = [
 
     const filesRaw: string[] = [];
     const filePromises = [];
-    for (const fileGlob of cmdOptions.files) {
+    for (let fileGlob of cmdOptions.files) {
+        fileGlob = (fileGlob as string).replace(/^"/, "").replace(/"$/, "");
         filePromises.push(new Promise((resolve, reject) => {
             glob.default(fileGlob, { mark: true}, (err, result) => {
                 if (err) {
@@ -347,5 +348,9 @@ const cmdOptionsGuide = [
                 }
             }
         }
+    }
+
+    if (!shouldSkip("done")) {
+        await rbxupload.askQuestion("Press enter to exit...");
     }
 })();
