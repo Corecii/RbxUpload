@@ -7,7 +7,7 @@ node_modules
 build.rbxm
 log-to-vs-code-roblox-plugin.rbxm
 
-devprod-linux-x64
-devprod-macos-x64
-devprod-win-x64.exe
-devprod-win-x86.exe
+rbxupload-linux-x64
+rbxupload-macos-x64
+rbxupload-win-x64.exe
+rbxupload-win-x86.exe
