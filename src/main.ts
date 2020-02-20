@@ -5,6 +5,7 @@ import * as delay from "delay";
 import * as fs from "fs-extra";
 import * as glob from "glob";
 import * as path from "path";
+import * as pixelfix from "./pixelfix";
 import * as rbxupload from "./rbxupload";
 import * as roblox from "./roblox";
 
@@ -17,7 +18,7 @@ function oneOf(arr: string[]) {
     };
 }
 
-const skipValues = ["user", "user-verify", "group", "group-verify", "files", "files-verify", "type", "id", "name", "description", "done"];
+const skipValues = ["user", "user-verify", "group", "group-verify", "files", "files-verify", "type", "id", "name", "description", "name-retry", "pixelfix", "done"];
 const assetTypeValues = ["auto", "decal"]; // , "image", "shirt", "pants", "tshirt", "model", "animation", "place"];
 
 const assetTypeExtensions: any = { };
@@ -41,9 +42,10 @@ const cmdOptionsDefinitions = [
     { name: "type", type: oneOf(assetTypeValues), description: "Type of asset to upload as"},
     // { name: "id", type: Number, description: "Existing asset id to upload to"},
     { name: "name", type: String, description: "Name of asset. Defaults to the file name."},
-    { name: "name-retry", type: String, description: "Fallback name if upload fails due to text filtering."},
     { name: "description", type: String, description: "Description of asset"},
+    { name: "name-retry", type: String, description: "Fallback name if upload fails due to text filtering."},
     { name: "description-retry", type: String, description: "Fallback description if upload fails due to text filtering."},
+    { name: "pixelfix", type: Boolean, description: "Use pixelfix to alpha bleed images before upload. Alpha-bleed is not saved to the file."},
 ];
 
 const cmdOptionsGuide = [
@@ -306,12 +308,31 @@ const cmdOptionsGuide = [
         }
     }
 
+    if (!cmdOptions["name-retry"] && !shouldSkip("name-retry")) {
+        const input = (await rbxupload.askQuestion("Retry assets with a default name if they fail due to text filtering? [Y/n] ")).toLowerCase().trim();
+        if (input === "" || input === "y") {
+            cmdOptions["name-retry"] = "Asset";
+        }
+    }
+
+    if (files.decal.length > 0 && !cmdOptions.pixelfix && !shouldSkip("pixelfix")) {
+        const input = (await rbxupload.askQuestion("Run pixelfix to alpha-bleed images before upload? [Y/n] ")).toLowerCase().trim();
+        cmdOptions.pixelfix = input === "" || input === "y";
+    }
+
     for (const file of files.decal) {
         let imageBuffer: Buffer;
         try {
             imageBuffer = await fs.readFile(file);
         } catch (error) {
             console.error(`${file}: FAILED because: Cannot open file: ${error.message}`);
+        }
+        if (cmdOptions.pixelfix) {
+            try {
+                imageBuffer = await pixelfix.pixelfix(imageBuffer);
+            } catch (error) {
+                console.warn(`${file}: could not pixelfix because: ${error.message}`);
+            }
         }
         if (imageBuffer) {
             let name = (cmdOptions.name as string).replace("$file", path.basename(file));
